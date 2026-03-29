@@ -41,6 +41,18 @@ A production-grade industrial vision system designed for real-time defect detect
 
 ---
 
+---
+
+## ⚡ One-Click Startup (Windows)
+
+For the easiest experience, simply double-click the **`run_project.bat`** file in the root directory. 
+This will:
+1.  Start the **FastAPI Backend**.
+2.  Start the **Vite/React Frontend**.
+3.  Automatically open your browser to **`http://localhost:5173`**.
+
+---
+
 ## ⚙️ Setup & Installation
 
 ### 1. Prerequisites
