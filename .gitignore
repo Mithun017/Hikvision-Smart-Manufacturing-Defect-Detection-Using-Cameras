@@ -1,0 +1,29 @@
+# IDEs
+.vscode/
+.idea/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# OS File
+Thumbs.db
+Desktop.ini
+
+# Project Specific
+Masterprompt.txt
+backend/data/sample_images/*.png
+!backend/data/sample_images/clean.png
+!backend/data/sample_images/defective.png
