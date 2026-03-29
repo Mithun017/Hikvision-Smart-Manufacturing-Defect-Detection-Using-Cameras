@@ -27,3 +27,4 @@ Masterprompt.txt
 backend/data/sample_images/*.png
 !backend/data/sample_images/clean.png
 !backend/data/sample_images/defective.png
+Test dataset/
