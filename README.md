@@ -30,6 +30,22 @@ The project includes a fully automated dataset generation and training pipeline 
 
 ## 🏗️ Detailed Project Workflow
 
+```mermaid
+graph TD
+    A[Camera / Video Stream] -->|Raw Frames| B(FastAPI Backend)
+    B --> C{YOLOv8 Inference}
+    C -->|Label: Defective| D[Status: REJECT]
+    C -->|Label: Clean| E{Confidence Check}
+    E -->|< 80%| F[Status: ANOMALY / REJECT]
+    E -->|>= 80%| G[Status: ACCEPT]
+    D --> H[State Manager]
+    F --> H
+    G --> H
+    H -->|Debounce Counting| I[WebSocket Server]
+    I -->|Base64 & Metrics @ 15FPS| J[React Dashboard]
+    J --> K[Live Monitors & Analytics]
+```
+
 1. **Vision Acquisition (Camera/Video)**: The Python backend captures frames either from a live Webcam (Camera 0), an RTSP Stream, or a simulated MP4 test dataset.
 2. **AI Inference Engine (YOLO)**: Each frame is passed to the Ultralytics YOLO model.
    - If it detects a defect directly, it flags a `REJECT`.
@@ -100,3 +116,11 @@ To use with physical Hikvision IP cameras instead of Webcams:
   ```python
   detector.set_video_source("rtsp://admin:password@192.168.1.64/Streaming/Channels/1")
   ```
+
+---
+
+## 🏁 Conclusion
+
+This system bridges the gap between raw AI inference and industrial-grade production dashboards. By unifying rapid YOLO detection, customizable anomaly fault-tolerance, and an ultra-low latency WebSocket React UI, it delivers a complete, deployable Quality Assurance pipeline tailored for fast-paced manufacturing lines.
+
+**Developer:** Hikvision - Mithun
