@@ -1,6 +1,6 @@
 @echo off
 TITLE Hikvision Smart Vision - Startup Script
-COLOR 0A
+COLOR 0C
 
 echo ===================================================
 echo   HIKVISION SMART VISION SYSTEM - STARTUP
