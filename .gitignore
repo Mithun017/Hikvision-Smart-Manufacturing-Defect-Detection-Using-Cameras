@@ -28,3 +28,9 @@ backend/data/sample_images/*.png
 !backend/data/sample_images/clean.png
 !backend/data/sample_images/defective.png
 Test dataset/
+
+# YOLO Training Artifacts
+backend/runs/
+backend/industrial_dataset/
+backend/yolov8n.pt
+backend/yolo11n.pt

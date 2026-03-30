@@ -1,0 +1,7 @@
+names:
+  0: clean
+  1: defective
+path: C:\Users\MITHUN\Desktop\STUDIES\PROJECT\56.HikVision - Smart Manufacturing Defect
+  Detection Using Cameras\backend\industrial_dataset
+train: train/images
+val: val/images

@@ -28,6 +28,9 @@ function App() {
   const [stats, setStats] = useState({ total: 0, defects: 0, fps: 0, latency: '0ms' });
   const [history, setHistory] = useState([]);
   const [chartData, setChartData] = useState([]);
+  const [videoList, setVideoList] = useState([]);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [activeMode, setActiveMode] = useState('Demo');
   const ws = useRef(null);
   const canvasRef = useRef(null);
 
@@ -35,7 +38,15 @@ function App() {
     // Check initial status
     fetch('http://localhost:8000/status')
       .then(res => res.json())
-      .then(data => setIsRunning(data.status === 'online'));
+      .then(data => {
+        setIsRunning(data.status === 'online');
+        setActiveMode(data.mode);
+      });
+    
+    // Fetch video list
+    fetch('http://localhost:8000/videos/list')
+      .then(res => res.json())
+      .then(data => setVideoList(data.videos || []));
   }, []);
 
   useEffect(() => {
@@ -75,6 +86,22 @@ function App() {
     if (res.ok) setIsRunning(!isRunning);
   };
 
+  const handleLoadVideo = async () => {
+    if (!selectedVideo) return;
+    const res = await fetch(`http://localhost:8000/videos/select?filename=${selectedVideo}`, { method: 'POST' });
+    if (res.ok) {
+        setActiveMode('Video');
+    }
+  };
+
+  const handleSwitchToDemo = async () => {
+    const res = await fetch('http://localhost:8000/control/mode/demo', { method: 'POST' });
+    if (res.ok) {
+        setSelectedVideo(null);
+        setActiveMode('Demo');
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <header>
@@ -100,6 +127,68 @@ function App() {
             {isRunning ? <Square size={16} fill="white" /> : <Play size={16} fill="white" />}
             {isRunning ? 'HALT SYSTEM' : 'ENGAGE PIPELINE'}
           </button>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Video Feed Source</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button 
+              className="btn" 
+              style={{ 
+                fontSize: '11px', 
+                background: activeMode === 'Demo' ? 'var(--accent-secondary)' : 'rgba(255,255,255,0.05)',
+                color: 'white',
+                border: '1px solid var(--grid-line)'
+              }}
+              onClick={handleSwitchToDemo}
+            >
+              LIVE DEMO MODE
+            </button>
+            
+            <div style={{ marginTop: '8px' }}>
+              <label style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>TEST DATASET VIDEOS</label>
+              <select 
+                style={{ 
+                  width: '100%', 
+                  background: 'var(--bg-tertiary)', 
+                  color: 'white', 
+                  border: '1px solid var(--grid-line)',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+                value={selectedVideo || ''}
+                onChange={(e) => setSelectedVideo(e.target.value)}
+              >
+                <option value="" disabled>Select a video...</option>
+                {videoList.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+              <button 
+                className="btn btn-load" 
+                style={{ 
+                  width: '100%', 
+                  marginTop: '8px',
+                  fontSize: '11px',
+                  background: 'rgba(0, 242, 255, 0.1)',
+                  color: 'var(--accent-primary)',
+                  border: '1px solid var(--accent-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+                onClick={handleLoadVideo}
+                disabled={!selectedVideo}
+              >
+                <Play size={12} fill="var(--accent-primary)" /> LOAD SELECTED VIDEO
+              </button>
+            </div>
+            {videoList.length === 0 && (
+                <p style={{ fontSize: '10px', color: 'var(--danger)', opacity: 0.8 }}>No videos found in /Test dataset/</p>
+            )}
+          </div>
         </div>
 
         <div className="card">
@@ -139,7 +228,7 @@ function App() {
             </div>
           )}
           <div className="feed-overlay">
-            CAM_01_REAR_LINE | {stats.fps} FPS | {isRunning ? 'RECORDING' : 'IDLE'}
+            {streamData?.source || 'INITIALIZING...'} | {stats.fps} FPS | {isRunning ? 'RECORDING' : 'IDLE'}
           </div>
           {streamData?.status === 'REJECT' && (
             <div style={{ position: 'absolute', bottom: '20px', right: '20px', background: 'var(--danger)', padding: '12px 24px', borderRadius: '4px', fontWeight: '800', fontSize: '24px' }}>
