@@ -56,16 +56,25 @@ graph TD
 
 ---
 
-## ⚡ How to Run the Project (One-Click Startup)
+## ⚡ How to Run the Project
 
-For the absolute easiest experience, simply double-click the **`run_project.bat`** file in the root directory. 
+### Option A: Development Mode (One-Click)
+For the absolute easiest developer experience, simply double-click the **`run_project.bat`** file in the root directory. 
 
-This will:
-1.  Start the **FastAPI Backend** (port 8000).
-2.  Start the **Vite/React Frontend** (port 5173).
-3.  Automatically open your browser to **`http://localhost:5173`**.
+This will automatically spin up two separate windows:
+1.  The **FastAPI Backend**.
+2.  The live **Vite/React Frontend** development server.
+3.  Your browser will instantly open to **`http://localhost:5173`**.
 
 *(Note: The startup terminal will display in Red (`COLOR 0C`) to indicate the Hikvision industrial theme).*
+
+### Option B: Production Hosted Mode (Standalone)
+Because the app is fully configured for production, you can bypass the `.bat` file entirely! The Python backend natively hosts the compiled React UI.
+1. Open a terminal inside the `backend/` folder.
+2. Run `python main.py`.
+3. Navigate to **`http://localhost:8000/`** directly. 
+
+The single Python server handles your WebSockets, routing, APIs, and the visual dashboard all at once!
 
 ---
 
@@ -94,6 +103,25 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### 4. Hosting the Frontend inside the Backend
+To achieve the "Production Hosted Mode" mentioned above, we use Vite to build the raw HTML/JS/CSS of the dashboard, and then we tell our FastAPI Python server to physically host those HTML files.
+
+**How to update the backend UI:**
+1. Navigate to the `frontend/` folder and run the command **`npm run build`**.
+2. This compiles the entire React app into a tiny, highly optimized folder called `dist/` (distribution).
+3. Simply **copy** that `dist/` folder, navigate to your `backend/` folder, and **paste** it, overwriting the old one.
+
+**How the Code Works:**
+Inside `backend/main.py`, we added this crucial line of code:
+```python
+# Mount frontend static files last so API routes take precedence (imp to handle the dist)
+app.mount("/", StaticFiles(directory=str(BASE_DIR / "dist"), html=True), name="frontend")
+```
+**Why is it added at the bottom?** 
+FastAPI evaluates routing from top to bottom. If we placed the `StaticFiles` line at the top, it would aggressively hijack *everything*, and your other custom APIs (like `/status` or `/control/start`) would break and throw `405 Method Not Allowed` errors. 
+
+By placing it at the very bottom, FastAPI processes all API requests first natively. If a request doesn't match an API (e.g. loading the website's root URL), it safely falls back to serving the React `dist` folder!
 
 ---
 
