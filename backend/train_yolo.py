@@ -6,7 +6,7 @@ from ultralytics import YOLO
 import random
 import yaml
 
-def create_yolo_dataset(video_path, output_dir, num_frames=50):
+def create_yolo_dataset(video_path, output_dir, num_frames=150):
     dataset_path = Path(output_dir)
     for subtype in ['train', 'val']:
         (dataset_path / subtype / 'images').mkdir(parents=True, exist_ok=True)
@@ -16,27 +16,30 @@ def create_yolo_dataset(video_path, output_dir, num_frames=50):
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print(f"Sampling {num_frames} frames from {video_path}...")
 
-    frame_indices = sorted(random.sample(range(total_frames), min(num_frames, total_frames)))
+    # Use MOG2 Background Subtractor to ignore static background (legs/pegboard)
+    backSub = cv2.createBackgroundSubtractorMOG2(history=100, varThreshold=50, detectShadows=False)
     
     frame_count = 0
     while cap.isOpened() and frame_count < num_frames:
         ret, frame = cap.read()
         if not ret: break
-        
-        idx = frame_indices[frame_count]
-        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
-        ret, frame = cap.read()
-        if not ret: break
 
+        # Apply background subtraction
+        fgMask = backSub.apply(frame)
+
+        # Skip first 30 frames to let the background model learn the static belt/pegs
+        if cap.get(cv2.CAP_PROP_POS_FRAMES) < 30:
+            continue
+
+        # Morphological operations to clean up noises in mask
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        thresh = cv2.morphologyEx(fgMask, cv2.MORPH_OPEN, kernel)
+        
         subtype = 'train' if random.random() < 0.8 else 'val'
         img_name = f"frame_{frame_count:04d}.jpg"
         img_path = dataset_path / subtype / 'images' / img_name
         label_path = dataset_path / subtype / 'labels' / f"frame_{frame_count:04d}.txt"
 
-        # Simple object detection for labeling (Contour detection)
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (7, 7), 0)
-        _, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         labels = []
@@ -44,7 +47,7 @@ def create_yolo_dataset(video_path, output_dir, num_frames=50):
         
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if 500 < area < 100000: # Filter small noise
+            if 1500 < area < 100000: # Increased minimum area to ignore tiny shadows
                 x, y, bw, bh = cv2.boundingRect(cnt)
                 
                 # Normalize for YOLO format (class_id, x_center, y_center, width, height)
@@ -94,11 +97,9 @@ def main():
 
     print("Starting YOLOv8n training...")
     model = YOLO('yolov8n.pt') 
-    model.train(data=str(root_dir / 'dataset.yaml'), epochs=10, imgsz=640, batch=4)
+    model.train(data=str(root_dir / 'dataset.yaml'), epochs=50, imgsz=640, batch=4)
     
     # Save the final model
-    print("Training complete. Exporting model to industrial_vision.pt...")
-    model.export(format='pt')
     # Copy the best weight to root for backend use
     best_model = Path("runs/detect/train/weights/best.pt")
     if best_model.exists():

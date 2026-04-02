@@ -12,7 +12,10 @@ import time
 from datetime import datetime
 from ultralytics import YOLO
 
-# Initialize FastAPI
+#New packages for front end build + run (for hosting)
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 app = FastAPI(title="Hikvision Smart Vision Defect Detection")
 
 # CORS Configuration
@@ -34,17 +37,23 @@ class SystemState:
         self.last_detection = None
         self.detection_history = []
         self.threshold = 0.5
-        self.mode = "Demo"  # Demo, Video, or Live
+        self.mode = "Video"  # Demo, Video, or Live
         self.video_source: Optional[str] = None
-        self.is_video_mode = False
+        self.is_video_mode = True
         self.last_item_seen_time = 0.0
 
 state = SystemState()
-DATASET_PATH = Path("../Test dataset")
+BASE_DIR = Path(__file__).resolve().parent
+DATASET_PATH = BASE_DIR.parent / "Test dataset"
+
+# Set default video source
+state.video_source = str(DATASET_PATH / "conveyor_01.mp4")
 
 # Real YOLOv8 Detector
 class YOLOv8DefectDetector:
-    def __init__(self, model_path='industrial_vision.pt'):
+    def __init__(self, model_path=None):
+        if model_path is None:
+            model_path = str(BASE_DIR / 'industrial_vision.pt')
         try:
             self.model = YOLO(model_path)
             print(f"DEBUG: YOLO model loaded from {model_path}")
@@ -53,8 +62,8 @@ class YOLOv8DefectDetector:
             self.model = None
             
         # Mock background for fallback
-        self.clean_img = cv2.imread('data/sample_images/clean.png')
-        self.defect_img = cv2.imread('data/sample_images/defective.png')
+        self.clean_img = cv2.imread(str(BASE_DIR / 'data/sample_images/clean.png'))
+        self.defect_img = cv2.imread(str(BASE_DIR / 'data/sample_images/defective.png'))
         self.video_cap = None
 
     def set_video_source(self, path: str):
@@ -83,7 +92,7 @@ class YOLOv8DefectDetector:
                 
                 if label == 'defective':
                     status = "REJECT"
-                elif label == 'clean' and conf < 0.80:
+                elif label == 'clean' and conf < 0.60:
                     status = "REJECT"
                     label = "anomaly"
 
@@ -259,6 +268,9 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
+# Mount frontend static files last so API routes take precedence (imp to handle the dist)
+app.mount("/", StaticFiles(directory=str(BASE_DIR / "dist"), html=True), name="frontend")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="localhost", port=8000)
